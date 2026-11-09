@@ -1,0 +1,5 @@
+body { font-family: Arial; }
+table { border-collapse: collapse; }
+th, td { border: 1px solid black; padding: 5px; }
+input, select { padding: 5px; border: 1px solid black; }
+.error { color: red; }

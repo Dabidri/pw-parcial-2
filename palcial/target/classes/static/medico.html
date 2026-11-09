@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Medico</title>
+<link rel="stylesheet" href="/estilos.css">
+</head>
+<body>
+	<h2>Medico - Mis consultas</h2>
+	<p><a href="/logout">Cerrar sesion</a></p>
+	<hr>
+
+	<h3 id="total">Consultas asignadas</h3>
+	<p>Solo puede consultar esta informacion; los cambios los realiza el administrador.</p>
+	<table>
+		<thead><tr><th>Id</th><th>Paciente</th><th>Motivo</th><th>Consultorio</th><th>Horario</th></tr></thead>
+		<tbody id="consultas"></tbody>
+	</table>
+
+	<script>
+		// si se vuelve con "atras" desde la cache, recargar para que el servidor revise la sesion
+		window.addEventListener("pageshow", e => { if (e.persisted) location.reload(); });
+
+		async function cargar() {
+			const res = await fetch("/api/consultas");
+			if (!res.ok) { location = "/sinpermiso.html"; return; }
+			const lista = await res.json();
+			let html = "";
+			for (const c of lista) {
+				html += "<tr><td>" + c.id + "</td><td>" + c.paciente + "</td><td>" + c.motivo + "</td><td>" + c.consultorio + "</td><td>" + c.horaInicio + " a " + c.horaFin + "</td></tr>";
+			}
+			document.getElementById("consultas").innerHTML = html || "<tr><td colspan='5'>No tiene consultas asignadas</td></tr>";
+			document.getElementById("total").textContent = "Consultas asignadas (" + lista.length + ")";
+		}
+		cargar();
+	</script>
+</body>
+</html>

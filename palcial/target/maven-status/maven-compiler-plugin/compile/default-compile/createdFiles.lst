@@ -1,0 +1,14 @@
+com\pwparcial\palcial\model\Consulta.class
+com\pwparcial\palcial\controller\ConsultaController.class
+com\pwparcial\palcial\repository\MedicoRepo.class
+com\pwparcial\palcial\config\Seguridad.class
+com\pwparcial\palcial\controller\Inicio.class
+com\pwparcial\palcial\controller\MedicoController.class
+com\pwparcial\palcial\model\Medico.class
+com\pwparcial\palcial\repository\UsuarioRepo.class
+com\pwparcial\palcial\config\SinCache.class
+com\pwparcial\palcial\config\Errores.class
+com\pwparcial\palcial\config\Swagger.class
+com\pwparcial\palcial\repository\ConsultaRepo.class
+com\pwparcial\palcial\model\Usuario.class
+com\pwparcial\palcial\config\Datos.class

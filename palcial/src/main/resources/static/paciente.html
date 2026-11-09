@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Paciente</title>
+<link rel="stylesheet" href="/estilos.css">
+</head>
+<body>
+	<h2>Paciente - Mis citas</h2>
+	<p><a href="/logout">Cerrar sesion</a></p>
+	<hr>
+
+	<h3>1. Mis citas asignadas</h3>
+	<p>Si desea cambiar el horario de una cita, pulse "Cambiar horario" en su fila.</p>
+	<table>
+		<thead><tr><th>Id</th><th>Paciente</th><th>Motivo</th><th>Consultorio</th><th>Horario</th><th>Medico</th><th>Accion</th></tr></thead>
+		<tbody id="consultas"></tbody>
+	</table>
+	<br>
+
+	<h3>2. Cambiar horario</h3>
+	<fieldset>
+		<legend id="titulo">Ninguna cita seleccionada</legend>
+		<input type="hidden" id="cid">
+		<p><label><input type="checkbox" id="cambiar" onchange="habilitar()" disabled> Quiero cambiar el horario de esta cita</label></p>
+		<p>Nuevo horario: de <input id="horaInicio" type="time" disabled> a <input id="horaFin" type="time" disabled></p>
+		<button id="guardar" onclick="guardar()" disabled>Guardar horario</button>
+		<button onclick="cancelar()">Cancelar</button>
+	</fieldset>
+
+	<script>
+		// si se vuelve con "atras" desde la cache, recargar para que el servidor revise la sesion
+		window.addEventListener("pageshow", e => { if (e.persisted) location.reload(); });
+
+		let consultas = [];
+
+		function el(id) { return document.getElementById(id); }
+
+		async function cargar() {
+			const res = await fetch("/api/consultas");
+			if (!res.ok) { location = "/sinpermiso.html"; return; }
+			consultas = await res.json();
+			let html = "";
+			for (const c of consultas) {
+				html += "<tr><td>" + c.id + "</td><td>" + c.paciente + "</td><td>" + c.motivo + "</td><td>" + c.consultorio + "</td><td>" + c.horaInicio + " a " + c.horaFin
+					+ "</td><td>" + c.medico.nombre + "</td><td><button onclick='editar(" + c.id + ")'>Cambiar horario</button></td></tr>";
+			}
+			el("consultas").innerHTML = html || "<tr><td colspan='7'>No tiene citas asignadas</td></tr>";
+		}
+
+		function editar(id) {
+			const c = consultas.find(x => x.id == id);
+			el("cid").value = c.id;
+			el("horaInicio").value = c.horaInicio;
+			el("horaFin").value = c.horaFin;
+			el("titulo").textContent = "Cita " + c.id + ": " + c.motivo + " (consultorio " + c.consultorio + ", " + c.horaInicio + " a " + c.horaFin + ")";
+			el("cambiar").disabled = false;
+		}
+
+		// los campos de hora solo se habilitan al marcar la casilla
+		function habilitar() {
+			const no = !el("cambiar").checked;
+			for (const id of ["horaInicio", "horaFin", "guardar"]) el(id).disabled = no;
+		}
+
+		function cancelar() {
+			el("cid").value = ""; el("horaInicio").value = ""; el("horaFin").value = "";
+			el("titulo").textContent = "Ninguna cita seleccionada";
+			el("cambiar").checked = false;
+			el("cambiar").disabled = true;
+			habilitar();
+		}
+
+		async function guardar() {
+			const h = { horaInicio: el("horaInicio").value, horaFin: el("horaFin").value };
+			const res = await fetch("/api/consultas/" + el("cid").value + "/horario", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(h) });
+			if (res.status == 400) { alert("Revise los datos:\n" + await res.text()); return; }
+			if (!res.ok) { location = "/sinpermiso.html"; return; }
+			cancelar();
+			cargar();
+		}
+
+		cargar();
+	</script>
+</body>
+</html>

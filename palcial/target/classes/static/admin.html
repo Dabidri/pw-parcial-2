@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Administrador</title>
+<link rel="stylesheet" href="/estilos.css">
+</head>
+<body>
+	<h2>Panel de administrador</h2>
+	<p>
+		Ir a: <a href="#consultas">Consultas</a> | <a href="#medicos">Medicos</a>
+		| <a href="/swagger-ui.html">Documentacion de servicios</a> | <a href="/logout">Cerrar sesion</a>
+	</p>
+	<hr>
+
+	<!-- consultas -->
+	<h3 id="consultas">1. Consultas</h3>
+	<p>Registre la consulta y asigne consultorio, horario y medico. El paciente entra con su nombre como usuario y clave nombre + 123.</p>
+
+	<fieldset id="formConsulta">
+		<legend id="tituloConsulta">Nueva consulta</legend>
+		<input type="hidden" id="cid">
+		<p>Nombre del paciente: <input id="paciente" placeholder="Ej: Juan Perez" maxlength="40"></p>
+		<p>Motivo de la consulta: <input id="motivo" size="60" placeholder="Ej: Dolor de cabeza" maxlength="100"></p>
+		<p>Numero de consultorio: <input id="consultorio" type="number" placeholder="Ej: 101"></p>
+		<p>Horario: de <input id="horaInicio" type="time"> a <input id="horaFin" type="time"></p>
+		<p>Medico: <select id="medico"></select></p>
+		<button onclick="guardarConsulta()" id="btnConsulta">Registrar consulta</button>
+		<button onclick="limpiarConsulta()">Cancelar</button>
+	</fieldset>
+
+	<h4 id="totalConsultas">Consultas registradas</h4>
+	<table>
+		<thead><tr><th>Id</th><th>Paciente</th><th>Motivo</th><th>Consultorio</th><th>Horario</th><th>Medico</th><th>Acciones</th></tr></thead>
+		<tbody id="tablaConsultas"></tbody>
+	</table>
+	<br>
+	<hr>
+
+	<!-- medicos -->
+	<h3 id="medicos">2. Medicos</h3>
+	<p>Los medicos registrados aparecen en la lista de la consulta. Cada uno entra con su usuario y clave usuario + 123.</p>
+
+	<fieldset id="formMedico">
+		<legend id="tituloMedico">Nuevo medico</legend>
+		<input type="hidden" id="mid">
+		<p>Nombre: <input id="nombre" placeholder="Ej: Pedro Gonzalez"></p>
+		<p>Especialidad: <input id="especialidad" placeholder="Ej: cirujano"></p>
+		<p>Usuario para iniciar sesion: <input id="usuario" placeholder="Ej: pedri"></p>
+		<button onclick="guardarMedico()" id="btnMedico">Registrar medico</button>
+		<button onclick="limpiarMedico()">Cancelar</button>
+	</fieldset>
+
+	<h4 id="totalMedicos">Medicos registrados</h4>
+	<table>
+		<thead><tr><th>Id</th><th>Nombre</th><th>Especialidad</th><th>Usuario</th><th>Acciones</th></tr></thead>
+		<tbody id="tablaMedicos"></tbody>
+	</table>
+	<br>
+
+	<script>
+		// si se retrocede desde la cache, recargar para que el servidor revise la sesion
+		window.addEventListener("pageshow", e => { if (e.persisted) location.reload(); });
+
+		let medicos = [];
+		let consultas = [];
+
+		function el(id) { return document.getElementById(id); }
+		function val(id) { return el(id).value; }
+		function poner(id, v) { el(id).value = v == null ? "" : v; }
+		function ref(id) { return val(id) ? { id: val(id) } : null; }
+
+		function opciones(id, lista, texto) {
+			let html = "<option value=''>-- seleccione un medico --</option>";
+			for (const x of lista) html += "<option value='" + x.id + "'>" + texto(x) + "</option>";
+			el(id).innerHTML = html;
+		}
+
+		async function datos(url) {
+			const res = await fetch(url);
+			if (!res.ok) { location = "/sinpermiso.html"; return []; }
+			return res.json();
+		}
+
+		async function enviar(url, metodo, cuerpo) {
+			const res = await fetch(url, { method: metodo, headers: { "Content-Type": "application/json" }, body: cuerpo ? JSON.stringify(cuerpo) : null });
+			if (res.status == 400) { alert("Revise los datos:\n" + await res.text()); return false; }
+			if (!res.ok) { location = "/sinpermiso.html"; return false; }
+			return true;
+		}
+
+		function botones(tipo, id) {
+			return "<button onclick='editar" + tipo + "(" + id + ")'>Editar</button> <button onclick='eliminar" + tipo + "(" + id + ")'>Eliminar</button>";
+		}
+
+		async function cargar() {
+			medicos = await datos("/api/medicos");
+			consultas = await datos("/api/consultas");
+			opciones("medico", medicos, m => m.nombre + " (" + m.especialidad + ")");
+
+			let html = "";
+			for (const c of consultas) {
+				html += "<tr><td>" + c.id + "</td><td>" + c.paciente + "</td><td>" + c.motivo + "</td><td>" + c.consultorio
+					+ "</td><td>" + c.horaInicio + " a " + c.horaFin + "</td><td>" + c.medico.nombre + "</td><td>" + botones("Consulta", c.id) + "</td></tr>";
+			}
+			el("tablaConsultas").innerHTML = html || "<tr><td colspan='7'>No hay consultas registradas</td></tr>";
+			el("totalConsultas").textContent = "Consultas registradas (" + consultas.length + ")";
+
+			html = "";
+			for (const m of medicos) {
+				html += "<tr><td>" + m.id + "</td><td>" + m.nombre + "</td><td>" + m.especialidad + "</td><td>" + (m.usuario ? m.usuario.username : "-")
+					+ "</td><td>" + botones("Medico", m.id) + "</td></tr>";
+			}
+			el("tablaMedicos").innerHTML = html || "<tr><td colspan='5'>No hay medicos registrados</td></tr>";
+			el("totalMedicos").textContent = "Medicos registrados (" + medicos.length + ")";
+		}
+
+		// ---- consultas ----
+		async function guardarConsulta() {
+			const c = {
+				paciente: val("paciente"), motivo: val("motivo"), consultorio: val("consultorio") || null,
+				horaInicio: val("horaInicio"), horaFin: val("horaFin"), medico: ref("medico")
+			};
+			const ok = val("cid") ? await enviar("/api/consultas/" + val("cid"), "PUT", c) : await enviar("/api/consultas", "POST", c);
+			if (ok) { limpiarConsulta(); cargar(); }
+		}
+
+		function editarConsulta(id) {
+			const c = consultas.find(x => x.id == id);
+			poner("cid", c.id); poner("paciente", c.paciente); poner("motivo", c.motivo); poner("consultorio", c.consultorio);
+			poner("horaInicio", c.horaInicio); poner("horaFin", c.horaFin); poner("medico", c.medico.id);
+			el("tituloConsulta").textContent = "Editando la consulta " + c.id + " de " + c.paciente;
+			el("btnConsulta").textContent = "Guardar cambios";
+			el("formConsulta").scrollIntoView();
+			el("paciente").focus();
+		}
+
+		function limpiarConsulta() {
+			for (const id of ["cid", "paciente", "motivo", "consultorio", "horaInicio", "horaFin", "medico"]) poner(id, "");
+			el("tituloConsulta").textContent = "Nueva consulta";
+			el("btnConsulta").textContent = "Registrar consulta";
+		}
+
+		async function eliminarConsulta(id) {
+			const c = consultas.find(x => x.id == id);
+			if (!confirm("¿Seguro que desea eliminar la consulta " + id + " de " + c.paciente + "?")) return;
+			if (await enviar("/api/consultas/" + id, "DELETE")) { limpiarConsulta(); cargar(); }
+		}
+
+		// ---- medicos ----
+		async function guardarMedico() {
+			const m = { nombre: val("nombre"), especialidad: val("especialidad"), usuario: { username: val("usuario") } };
+			const ok = val("mid") ? await enviar("/api/medicos/" + val("mid"), "PUT", m) : await enviar("/api/medicos", "POST", m);
+			if (ok) { limpiarMedico(); cargar(); }
+		}
+
+		function editarMedico(id) {
+			const m = medicos.find(x => x.id == id);
+			poner("mid", m.id); poner("nombre", m.nombre); poner("especialidad", m.especialidad);
+			poner("usuario", m.usuario ? m.usuario.username : "");
+			el("tituloMedico").textContent = "Editando al medico " + m.nombre;
+			el("btnMedico").textContent = "Guardar cambios";
+			el("formMedico").scrollIntoView();
+			el("nombre").focus();
+		}
+
+		function limpiarMedico() {
+			for (const id of ["mid", "nombre", "especialidad", "usuario"]) poner(id, "");
+			el("tituloMedico").textContent = "Nuevo medico";
+			el("btnMedico").textContent = "Registrar medico";
+		}
+
+		async function eliminarMedico(id) {
+			const m = medicos.find(x => x.id == id);
+			if (!confirm("¿Seguro que desea eliminar al medico " + m.nombre + "?")) return;
+			if (await enviar("/api/medicos/" + id, "DELETE")) { limpiarMedico(); cargar(); }
+		}
+
+		cargar();
+	</script>
+</body>
+</html>

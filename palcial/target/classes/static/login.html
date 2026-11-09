@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Iniciar sesion</title>
+<link rel="stylesheet" href="/estilos.css">
+</head>
+<body>
+	<h2>Consultas Medicas - Iniciar sesion</h2>
+	<p id="error" class="error"></p>
+	<form method="post" action="/login">
+		<p>Usuario: <input name="username" required></p>
+		<p>Clave: <input name="password" type="password" required></p>
+		<button type="submit">Ingresar</button>
+	</form>
+	<script>
+		if (location.search.includes("error")) {
+			document.getElementById("error").textContent = "Usuario o contraseña incorrectos";
+		}
+	</script>
+</body>
+</html>
